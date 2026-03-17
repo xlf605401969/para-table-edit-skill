@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parameter Table Editor"
+  short_description: "Edit and validate ParameterTable.xlsx workbooks."
+  default_prompt: "Use this skill to edit or validate ParameterTable.xlsx by adding or removing macros, pages, and parameters, then run validation."
