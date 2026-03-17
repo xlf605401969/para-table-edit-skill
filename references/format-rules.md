@@ -11,6 +11,16 @@ Use this file when you need the detailed workbook structure and validation contr
 - Parameter data starts at row `4`.
 - Each parameter page ends with a `Page End` marker in column `A`.
 
+Typical query operations:
+
+- `list-pages`: return all parameter page names, excluding `Settings`.
+- `list-pages --json`: return the page-name list as JSON.
+- `list-parameters --sheet PAGE`: return each parameter row in the page with default output `id`, `alias`, and `default`.
+- `list-parameters --sheet PAGE --columns ...`: return only the requested columns for each parameter row. Accept both Excel columns and friendly names.
+- `list-parameters --sheet PAGE --json`: return the parameter list as JSON objects.
+- `get-parameter --sheet PAGE (--id XXX-YYY | --alias ALIAS)`: return all available properties for one parameter row.
+- `get-parameter --sheet PAGE (--id XXX-YYY | --alias ALIAS) --json`: return the full parameter detail as JSON.
+
 ## Parameter Row Shape
 
 Core columns:
@@ -37,6 +47,15 @@ Core columns:
 
 Columns after `S` may exist on some sheets and should be preserved.
 
+## Editing Existing Parameters
+
+When editing an existing parameter row:
+
+- Identify the row by exactly one selector: parameter id (`XXX-YYY`) or alias.
+- Update only the provided fields and preserve all other cell values in the row.
+- Do not rewrite column `A`; parameter id is treated as immutable by the CLI edit command.
+- Column `O` (`alias`) must remain non-empty after the edit.
+
 ## New Parameter Defaults
 
 When adding a new parameter, initialize these defaults unless the user explicitly overrides them:
@@ -58,7 +77,8 @@ When adding a new parameter, initialize these defaults unless the user explicitl
 The new row must also provide:
 
 - `O` / `alias`
-- `P` / `name`
+
+`P` / `name` is optional. `ExtField` columns may be empty.
 
 ## Validation Rules
 

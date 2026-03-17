@@ -1,6 +1,6 @@
 # parameter-table-editor
 
-Codex skill for editing and validating `ParameterTable.xlsx`.
+Codex skill for querying, editing, and validating `ParameterTable.xlsx`, including page/parameter listing, per-parameter detail lookup, and add/edit/remove operations for parameter rows.
 
 Repository layout:
 

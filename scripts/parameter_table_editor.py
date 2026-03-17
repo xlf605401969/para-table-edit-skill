@@ -77,6 +77,27 @@ FRIENDLY_KEYS = {
     "calculated_default": "S",
     "computed_default": "S",
 }
+PREFERRED_COLUMN_NAMES = {
+    "A": "id",
+    "B": "hidden",
+    "C": "read_only",
+    "D": "storage",
+    "E": "reset",
+    "F": "runtime_write",
+    "G": "limit",
+    "H": "decimals",
+    "I": "signed",
+    "J": "float",
+    "K": "reserved",
+    "L": "max",
+    "M": "min",
+    "N": "default",
+    "O": "alias",
+    "P": "name",
+    "Q": "unit",
+    "R": "desc",
+    "S": "calculated_default",
+}
 DEFAULT_PARAMETER_VALUES = {
     "B": 0,
     "C": 0,
@@ -92,7 +113,8 @@ DEFAULT_PARAMETER_VALUES = {
     "M": 0,
     "N": 100,
 }
-REQUIRED_PARAMETER_COLUMNS = ["O", "P"]
+REQUIRED_PARAMETER_COLUMNS = ["O"]
+DEFAULT_LIST_COLUMNS = ["A", "O", "N"]
 
 warnings.filterwarnings(
     "ignore",
@@ -163,6 +185,54 @@ def parse_args() -> argparse.Namespace:
     remove_param.add_argument("--sheet", required=True)
     remove_param.add_argument("--id")
     remove_param.add_argument("--alias")
+
+    edit_param = subparsers.add_parser("edit-parameter", help="Edit an existing parameter row")
+    edit_param.add_argument("--sheet", required=True)
+    edit_param.add_argument("--id")
+    edit_param.add_argument("--alias")
+    edit_param.add_argument(
+        "--json",
+        help="Inline JSON object or @path/to/json file with row values.",
+    )
+    edit_param.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Set a row field. Keys can be Excel columns or friendly names like alias/default/unit.",
+    )
+
+    list_pages_parser = subparsers.add_parser("list-pages", help="List parameter page names")
+    list_pages_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the result as JSON.",
+    )
+
+    list_params = subparsers.add_parser("list-parameters", help="List parameters in a page")
+    list_params.add_argument("--sheet", required=True)
+    list_params.add_argument(
+        "--columns",
+        action="append",
+        default=[],
+        metavar="COL1,COL2",
+        help="Columns to display. Use Excel columns or friendly names like id, alias, default.",
+    )
+    list_params.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the result as JSON.",
+    )
+
+    get_param = subparsers.add_parser("get-parameter", help="Show all properties for one parameter")
+    get_param.add_argument("--sheet", required=True)
+    get_param.add_argument("--id")
+    get_param.add_argument("--alias")
+    get_param.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the result as JSON.",
+    )
 
     subparsers.add_parser("validate", help="Validate workbook structure and numbering")
     return parser.parse_args()
@@ -320,11 +390,9 @@ def resolve_row_payload(json_arg: str | None, sets: List[str]) -> Dict[str, str]
         if not isinstance(key, str):
             raise ValidationError("Row JSON keys must be strings.")
         key_upper = key.upper()
-        column = None
-        if re.fullmatch(r"[A-Z]{1,3}", key_upper):
+        column = FRIENDLY_KEYS.get(key.lower())
+        if column is None and re.fullmatch(r"[A-Z]{1,3}", key_upper):
             column = key_upper
-        else:
-            column = FRIENDLY_KEYS.get(key.lower())
         if column is None:
             raise ValidationError(f"Unsupported field '{key}'.")
         normalized[column] = value
@@ -448,21 +516,149 @@ def add_parameter(wb, sheet: str, suffix_raw: str, prefix_override: int | None, 
     return param_id
 
 
-def remove_parameter(wb, sheet: str, param_id: str | None, alias: str | None) -> None:
-    if not param_id and not alias:
-        raise ValidationError("Provide --id or --alias.")
-    ws = get_sheet_or_raise(wb, sheet)
+def find_parameter_row(ws, param_id: str | None, alias: str | None) -> int:
+    if bool(param_id) == bool(alias):
+        raise ValidationError("Provide exactly one of --id or --alias.")
+    if ws.title == SETTINGS_SHEET:
+        raise ValidationError("Parameters cannot be edited on Settings.")
+
     for row in iter_parameter_rows(ws):
         row_id = ws[f"A{row}"].value
         row_alias = ws[f"O{row}"].value
         if param_id and str(row_id) == param_id:
-            ws.delete_rows(row, 1)
-            return
+            return row
         if alias and str(row_alias) == alias:
-            ws.delete_rows(row, 1)
-            return
+            return row
+
     target = param_id if param_id else alias
-    raise ValidationError(f"Parameter '{target}' not found in sheet '{sheet}'.")
+    raise ValidationError(f"Parameter '{target}' not found in sheet '{ws.title}'.")
+
+
+def edit_parameter(
+    wb,
+    sheet: str,
+    param_id: str | None,
+    alias: str | None,
+    payload: Dict[str, str],
+) -> str:
+    if not payload:
+        raise ValidationError("Provide at least one field with --json or --set.")
+
+    ws = get_sheet_or_raise(wb, sheet)
+    row = find_parameter_row(ws, param_id, alias)
+    current_id = ws[f"A{row}"].value
+
+    for column, value in payload.items():
+        if column == "A":
+            raise ValidationError("Editing column A / parameter id is not supported.")
+        ws[f"{column}{row}"] = value
+
+    for column in REQUIRED_PARAMETER_COLUMNS:
+        if ws[f"{column}{row}"].value in (None, ""):
+            raise ValidationError(
+                f"Edited parameter requires column {column} to be set."
+            )
+
+    return str(current_id)
+
+
+def remove_parameter(wb, sheet: str, param_id: str | None, alias: str | None) -> None:
+    ws = get_sheet_or_raise(wb, sheet)
+    row = find_parameter_row(ws, param_id, alias)
+    ws.delete_rows(row, 1)
+
+
+def list_pages(wb) -> List[str]:
+    return [ws.title for ws in parameter_sheets(wb)]
+
+
+def resolve_query_columns(column_args: List[str]) -> List[str]:
+    if not column_args:
+        return list(DEFAULT_LIST_COLUMNS)
+
+    resolved: List[str] = []
+    seen = set()
+    for item in column_args:
+        for raw_key in item.split(","):
+            key = raw_key.strip()
+            if not key:
+                continue
+            key_upper = key.upper()
+            column = FRIENDLY_KEYS.get(key.lower())
+            if column is None and re.fullmatch(r"[A-Z]{1,3}", key_upper):
+                column = key_upper
+            if column is None:
+                raise ValidationError(f"Unsupported query column '{key}'.")
+            if column not in seen:
+                resolved.append(column)
+                seen.add(column)
+    if not resolved:
+        raise ValidationError("Provide at least one query column.")
+    return resolved
+
+
+def column_label(column: str) -> str:
+    return PREFERRED_COLUMN_NAMES.get(column, column.lower())
+
+
+def cell_to_text(value) -> str:
+    return "" if value is None else str(value)
+
+
+def parameter_row_to_dict(ws, row: int, columns: List[str]) -> Dict[str, str]:
+    return {
+        column_label(column): cell_to_text(ws[f"{column}{row}"].value)
+        for column in columns
+    }
+
+
+def parameter_detail_columns(ws) -> List[str]:
+    return [get_column_letter(col) for col in range(1, ws.max_column + 1)]
+
+
+def list_parameters(wb, sheet: str, columns: List[str]) -> List[Dict[str, str]]:
+    ws = get_sheet_or_raise(wb, sheet)
+    if ws.title == SETTINGS_SHEET:
+        raise ValidationError("Settings is not a parameter page.")
+
+    parameters: List[Dict[str, str]] = []
+    for row in iter_parameter_rows(ws):
+        param_id = ws[f"A{row}"].value
+        if param_id in (None, "", "Page End"):
+            continue
+        parameters.append(parameter_row_to_dict(ws, row, columns))
+    return parameters
+
+
+def get_parameter(wb, sheet: str, param_id: str | None, alias: str | None) -> Dict[str, str]:
+    ws = get_sheet_or_raise(wb, sheet)
+    row = find_parameter_row(ws, param_id, alias)
+    return parameter_row_to_dict(ws, row, parameter_detail_columns(ws))
+
+
+def print_pages(pages: List[str]) -> None:
+    if not pages:
+        print("No parameter pages found.")
+        return
+    for page in pages:
+        print(page)
+
+
+def print_parameters(parameters: List[Dict[str, str]]) -> None:
+    if not parameters:
+        print("No parameters found.")
+        return
+    for item in parameters:
+        print("\t".join(f"{key}={value}" for key, value in item.items()))
+
+
+def print_parameter_detail(parameter: Dict[str, str]) -> None:
+    for key, value in parameter.items():
+        print(f"{key}={value}")
+
+
+def print_json(data) -> None:
+    print(json.dumps(data, ensure_ascii=False, indent=2))
 
 
 def validate_workbook(wb) -> Tuple[List[str], List[str]]:
@@ -596,6 +792,30 @@ def main() -> int:
             remove_parameter(wb, args.sheet, args.id, args.alias)
             save_wb(wb, output_path)
             print(f"Removed parameter from sheet '{args.sheet}'.")
+        elif args.command == "edit-parameter":
+            payload = resolve_row_payload(args.json, args.set)
+            param_id = edit_parameter(wb, args.sheet, args.id, args.alias, payload)
+            save_wb(wb, output_path)
+            print(f"Edited parameter '{param_id}' in sheet '{args.sheet}'.")
+        elif args.command == "list-pages":
+            pages = list_pages(wb)
+            if args.json:
+                print_json(pages)
+            else:
+                print_pages(pages)
+        elif args.command == "list-parameters":
+            columns = resolve_query_columns(args.columns)
+            parameters = list_parameters(wb, args.sheet, columns)
+            if args.json:
+                print_json(parameters)
+            else:
+                print_parameters(parameters)
+        elif args.command == "get-parameter":
+            parameter = get_parameter(wb, args.sheet, args.id, args.alias)
+            if args.json:
+                print_json(parameter)
+            else:
+                print_parameter_detail(parameter)
         elif args.command == "validate":
             errors, warnings = validate_workbook(wb)
             print_validation(errors, warnings)
