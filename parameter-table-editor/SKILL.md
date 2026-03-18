@@ -50,6 +50,7 @@ Supported commands:
 - When creating an empty page, copy the template sheet structure and remove only parameter rows.
 - When adding a parameter, use `--prefix` if the page currently has no parameters. Otherwise infer the page prefix from existing rows.
 - Pass row data with `--json` or repeated `--set` flags. Keys may be Excel columns (`A`, `O`, `Q`) or friendly names such as `alias`, `default`, `unit`, `desc`.
+- Columns `B:N` are written as numeric cell values. Numeric-looking strings such as `--set default=5` are coerced before saving; non-numeric input for `B:N` is rejected.
 - When editing or removing a parameter, identify the target with exactly one of `--id` or `--alias`.
 - Editing preserves the current row and only updates the fields provided through `--json` or `--set`.
 - Editing parameter id / column `A` is intentionally rejected; use the existing id or alias only as a selector.

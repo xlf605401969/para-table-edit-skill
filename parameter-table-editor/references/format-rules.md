@@ -55,6 +55,7 @@ When editing an existing parameter row:
 - Update only the provided fields and preserve all other cell values in the row.
 - Do not rewrite column `A`; parameter id is treated as immutable by the CLI edit command.
 - Column `O` (`alias`) must remain non-empty after the edit.
+- Columns `B:N` are stored as numeric Excel values; numeric-looking strings are coerced, and non-numeric values are rejected for those columns.
 
 ## New Parameter Defaults
 
@@ -92,6 +93,10 @@ Hard errors:
 - A `YYY` suffix exceeds `127`.
 - Two different sheets reuse the same `XXX` prefix.
 - Column `O` (`Alias`) is empty.
+
+Notes:
+
+- Column `S` (`calculated default`) is preserved for query/edit operations but is excluded from validation checks.
 
 Warnings:
 

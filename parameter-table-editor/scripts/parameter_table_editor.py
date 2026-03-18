@@ -10,7 +10,7 @@ import sys
 import warnings
 from copy import copy
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 from openpyxl import load_workbook
 from openpyxl.utils import column_index_from_string, get_column_letter
@@ -112,6 +112,10 @@ DEFAULT_PARAMETER_VALUES = {
     "L": 65535,
     "M": 0,
     "N": 100,
+}
+NUMERIC_PARAMETER_COLUMNS = {
+    get_column_letter(index)
+    for index in range(column_index_from_string("B"), column_index_from_string("N") + 1)
 }
 REQUIRED_PARAMETER_COLUMNS = ["O"]
 DEFAULT_LIST_COLUMNS = ["A", "O", "N"]
@@ -371,8 +375,29 @@ def existing_suffixes(ws) -> List[int]:
     return suffixes
 
 
-def resolve_row_payload(json_arg: str | None, sets: List[str]) -> Dict[str, str]:
-    payload: Dict[str, str] = {}
+def coerce_parameter_value(column: str, value: Any):
+    if column not in NUMERIC_PARAMETER_COLUMNS or value in (None, ""):
+        return value
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return value
+        try:
+            number = float(text)
+        except ValueError as exc:
+            raise ValidationError(
+                f"Column {column} must be numeric; received '{value}'."
+            ) from exc
+        return int(number) if number.is_integer() else number
+    raise ValidationError(f"Column {column} must be numeric; received {type(value).__name__}.")
+
+
+def resolve_row_payload(json_arg: str | None, sets: List[str]) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {}
     if json_arg:
         if json_arg.startswith("@"):
             payload = json.loads(Path(json_arg[1:]).read_text(encoding="utf-8"))
@@ -385,7 +410,7 @@ def resolve_row_payload(json_arg: str | None, sets: List[str]) -> Dict[str, str]
             raise ValidationError(f"Invalid --set '{item}'. Expected KEY=VALUE.")
         key, value = item.split("=", 1)
         payload[key] = value
-    normalized: Dict[str, str] = {}
+    normalized: Dict[str, Any] = {}
     for key, value in payload.items():
         if not isinstance(key, str):
             raise ValidationError("Row JSON keys must be strings.")
@@ -395,7 +420,7 @@ def resolve_row_payload(json_arg: str | None, sets: List[str]) -> Dict[str, str]
             column = key_upper
         if column is None:
             raise ValidationError(f"Unsupported field '{key}'.")
-        normalized[column] = value
+        normalized[column] = coerce_parameter_value(column, value)
     return normalized
 
 
@@ -678,6 +703,8 @@ def validate_workbook(wb) -> Tuple[List[str], List[str]]:
             if ws[cell_ref].value != expected:
                 errors.append(f"{ws.title}: {cell_ref} must be '{expected}'.")
         for cell_ref, expected in PARAM_HEADER_ROW_3.items():
+            if cell_ref == "S3":
+                continue
             if ws[cell_ref].value != expected:
                 errors.append(f"{ws.title}: {cell_ref} must be '{expected}'.")
 
