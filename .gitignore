@@ -2,4 +2,4 @@ __pycache__/
 *.pyc
 *.pyo
 *.xlsx
-!assets/examples/ParameterTable.xlsx
+!parameter-table-editor/assets/examples/ParameterTable.xlsx
