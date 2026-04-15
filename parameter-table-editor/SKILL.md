@@ -12,7 +12,7 @@ Use `<skill-dir>/scripts/parameter_table_editor.py` for all workbook changes and
 1. Inspect the workbook with `validate` before editing if the file may already be inconsistent.
 2. Apply the requested mutation with one of the edit subcommands.
 3. Run `validate` again after every structural change.
-4. Read `references/format-rules.md` when you need the full page structure, column mapping, and validation contract.
+4. Read `<skill-dir>/references/format-rules.md` when you need the full page structure, column mapping, and validation contract.
 5. Report both hard errors and continuity warnings back to the user.
 
 ## Commands
