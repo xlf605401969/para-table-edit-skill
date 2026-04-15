@@ -5,7 +5,7 @@ description: Edit and validate ParameterTable.xlsx-style parameter workbooks wit
 
 # Parameter Table Editor
 
-Use `scripts/parameter_table_editor.py` for all workbook changes and validation. Prefer running the script over hand-editing cells so numbering, styles, and page structure stay consistent.
+Use `<skill-dir>/scripts/parameter_table_editor.py` for all workbook changes and validation. Prefer running the script over hand-editing cells so numbering, styles, and page structure stay consistent.
 
 ## Workflow
 
@@ -20,7 +20,7 @@ Use `scripts/parameter_table_editor.py` for all workbook changes and validation.
 Run the script with:
 
 ```bash
-python /path/to/parameter-table-editor/scripts/parameter_table_editor.py <workbook> <command> ...
+python <skill-dir>/scripts/parameter_table_editor.py <workbook> <command> ...
 ```
 
 Supported commands:
@@ -91,21 +91,21 @@ Usage notes:
 ## Typical Calls
 
 ```bash
-python scripts/parameter_table_editor.py ParameterTable.xlsx validate
-python scripts/parameter_table_editor.py ParameterTable.xlsx list-pages
-python scripts/parameter_table_editor.py ParameterTable.xlsx list-pages --json
-python scripts/parameter_table_editor.py ParameterTable.xlsx list-parameters --sheet MOTOR0
-python scripts/parameter_table_editor.py ParameterTable.xlsx list-parameters --sheet MOTOR0 --columns id,alias,unit,default
-python scripts/parameter_table_editor.py ParameterTable.xlsx list-parameters --sheet MOTOR0 --columns id,alias,unit,default --json
-python scripts/parameter_table_editor.py ParameterTable.xlsx get-parameter --sheet MOTOR0 --id 001-000
-python scripts/parameter_table_editor.py ParameterTable.xlsx get-parameter --sheet MOTOR0 --id 001-000 --json
-python scripts/parameter_table_editor.py ParameterTable.xlsx add-macro --name USER_FOO --value 1
-python scripts/parameter_table_editor.py ParameterTable.xlsx add-page --page-name TEST --page-prefix 13 --template-sheet BASE
-python scripts/parameter_table_editor.py ParameterTable.xlsx add-parameter --sheet TEST --prefix 13 --set alias=Foo --set name=Foo --set default=0 --set max=100 --set min=0
-python scripts/parameter_table_editor.py ParameterTable.xlsx edit-parameter --sheet TEST --id 013-000 --set alias=Foo2 --set default=5
-python scripts/parameter_table_editor.py ParameterTable.xlsx edit-parameter --sheet TEST --alias Foo2 --set desc="updated description"
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx validate
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx list-pages
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx list-pages --json
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx list-parameters --sheet MOTOR0
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx list-parameters --sheet MOTOR0 --columns id,alias,unit,default
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx list-parameters --sheet MOTOR0 --columns id,alias,unit,default --json
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx get-parameter --sheet MOTOR0 --id 001-000
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx get-parameter --sheet MOTOR0 --id 001-000 --json
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx add-macro --name USER_FOO --value 1
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx add-page --page-name TEST --page-prefix 13 --template-sheet BASE
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx add-parameter --sheet TEST --prefix 13 --set alias=Foo --set name=Foo --set default=0 --set max=100 --set min=0
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx edit-parameter --sheet TEST --id 013-000 --set alias=Foo2 --set default=5
+python <skill-dir>/scripts/parameter_table_editor.py ParameterTable.xlsx edit-parameter --sheet TEST --alias Foo2 --set desc="updated description"
 ```
 
 ## Bundled Asset
 
-Use `assets/examples/ParameterTable.xlsx` as the canonical example workbook when you need a realistic sample for validation, demos, or forward-testing.
+Use `<skill-dir>/assets/examples/ParameterTable.xlsx` as the canonical example workbook when you need a realistic sample for validation, demos, or forward-testing.
